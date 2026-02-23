@@ -1,10 +1,6 @@
-import { authMiddleware } from "@clerk/nextjs";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-export default authMiddleware({
-  // Aqui você define quais páginas são públicas. 
-  // Geralmente deixamos apenas a Home ou Landing Page pública.
-  publicRoutes: ["/"] 
-});
+export default clerkMiddleware();
 
 export const config = {
   matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
