@@ -27,13 +27,18 @@ export default function Progresso() {
   // Cálculos de Estatísticas
   const total = tarefas.length;
   const concluidas = tarefas.filter((t) => t.concluida).length;
-  const taxaSucesso = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+  const progressoTotal = total > 0 ? Math.round((concluidas / total) * 100) : 0;
 
   const teoria = tarefas.filter((t) => t.tipo === "teoria").length;
   const teoriaConcluida = tarefas.filter((t) => t.tipo === "teoria" && t.concluida).length;
   
   const exercicio = tarefas.filter((t) => t.tipo === "exercicio").length;
   const exercicioConcluido = tarefas.filter((t) => t.tipo === "exercicio" && t.concluida).length;
+
+  // Configurações do Gráfico Circular
+  const raio = 36;
+  const circunferencia = 2 * Math.PI * raio;
+  const offset = circunferencia - (progressoTotal / 100) * circunferencia;
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
@@ -44,23 +49,53 @@ export default function Progresso() {
 
       {/* CARDS PRINCIPAIS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 text-center">
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total de Tarefas</p>
           <p className="text-4xl font-black text-slate-800">{total}</p>
         </div>
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 text-center">
+        
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Concluídas</p>
           <p className="text-4xl font-black text-green-500">{concluidas}</p>
         </div>
-        <div className="bg-violet-600 p-8 rounded-[2.5rem] shadow-xl shadow-violet-100 text-center text-white">
-          <p className="text-[10px] font-black text-violet-200 uppercase tracking-widest mb-2">Taxa de Sucesso</p>
-          <p className="text-4xl font-black">{taxaSucesso}%</p>
+
+        {/* CARD COM GRÁFICO CIRCULAR */}
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center text-center">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Progresso</p>
+          
+          <div className="relative flex items-center justify-center">
+            <svg className="w-24 h-24 transform -rotate-90">
+              {/* Círculo de fundo */}
+              <circle
+                cx="48"
+                cy="48"
+                r={raio}
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="transparent"
+                className="text-slate-100"
+              />
+              {/* Círculo de progresso */}
+              <circle
+                cx="48"
+                cy="48"
+                r={raio}
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="transparent"
+                strokeDasharray={circunferencia}
+                strokeDashoffset={offset}
+                strokeLinecap="round"
+                className="text-violet-600 transition-all duration-1000"
+              />
+            </svg>
+            <span className="absolute text-xl font-black text-slate-800">{progressoTotal}%</span>
+          </div>
         </div>
       </div>
 
       {/* ANÁLISE POR CATEGORIA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Teoria */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
           <div className="flex justify-between items-end mb-4">
             <h3 className="text-xl font-bold text-slate-800">📖 Teoria</h3>
@@ -74,7 +109,6 @@ export default function Progresso() {
           </div>
         </div>
 
-        {/* Exercícios */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
           <div className="flex justify-between items-end mb-4">
             <h3 className="text-xl font-bold text-slate-800">✍️ Exercícios</h3>
@@ -89,7 +123,6 @@ export default function Progresso() {
         </div>
       </div>
 
-      {/* MENSAGEM DE INCENTIVO */}
       <div className="mt-12 bg-slate-800 p-10 rounded-[3rem] text-center text-white relative overflow-hidden">
         <div className="relative z-10">
           <h2 className="text-2xl font-bold mb-2">Continue firme! 🚀</h2>
