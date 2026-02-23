@@ -2,30 +2,40 @@
 
 import { useState, useEffect } from "react";
 import { loadTasks } from "@/lib/store";
-import { useUser } from "@clerk/nextjs"; // <--- 1. Importar o Clerk
+import { useUser, useSession } from "@clerk/nextjs"; // <--- 1. Importar useSession
 import Link from "next/link";
 
 export default function Dashboard() {
-  const { user, isLoaded } = useUser(); // <--- 2. Ativar o usuário
+  const { user, isLoaded } = useUser();
+  const { session } = useSession(); // <--- 2. Ativar a sessão para o token
   const [tarefas, setTarefas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
-      // 3. Só buscar se o Clerk carregou e existe um usuário
-      if (isLoaded && user) {
-        const dados = await loadTasks(user.id); // <--- Passar o ID aqui
-        setTarefas(dados);
-        setLoading(false);
-        setMounted(true);
+      // 3. Só buscar se o Clerk carregou, o usuário existe e a sessão está ativa
+      if (isLoaded && user && session) {
+        try {
+          // 4. Pegar o Token do Supabase igual no cronograma
+          const token = await session.getToken({ template: "supabase" });
+          
+          // 5. Passar o ID e o Token para carregar as tarefas
+          const dados = await loadTasks(user.id, token);
+          setTarefas(dados);
+        } catch (error) {
+          console.error("Erro ao buscar dados do Dashboard:", error);
+        } finally {
+          setLoading(false);
+          setMounted(true);
+        }
       } else if (isLoaded && !user) {
         setLoading(false);
         setMounted(true);
       }
     }
     fetchData();
-  }, [user, isLoaded]);
+  }, [user, isLoaded, session]);
 
   if (!mounted || loading || !isLoaded) {
     return (
@@ -35,7 +45,6 @@ export default function Dashboard() {
     );
   }
 
-  // Se o usuário não estiver logado
   if (!user) {
     return (
       <div className="text-center p-10">
@@ -44,9 +53,8 @@ export default function Dashboard() {
     );
   }
 
-  // --- LÓGICA DE DATAS E PROGRESSO ---
-  // Ajuste para pegar a data local correta
-  const hoje = new Date().toLocaleDateString('en-CA'); // Formato YYYY-MM-DD estável
+  // --- LÓGICA DE DATAS E PROGRESSO (Permanece igual, agora com dados reais) ---
+  const hoje = new Date().toLocaleDateString('en-CA'); 
   
   const tarefasHoje = tarefas.filter(t => t.data === hoje);
   const concluidasHoje = tarefasHoje.filter(t => t.concluida).length;
@@ -58,7 +66,6 @@ export default function Dashboard() {
 
   const proximaTarefa = tarefasHoje.find(t => !t.concluida && t.prioridade === 'alta') || tarefasHoje.find(t => !t.concluida);
 
-  // Configurações para os Gráficos Animados
   const raioGeral = 58;
   const circGeral = 2 * Math.PI * raioGeral;
   const offsetGeral = circGeral - (porcentagemGeral / 100) * circGeral;
@@ -69,6 +76,7 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-0">
+      {/* O RESTO DO SEU JSX CONTINUA EXATAMENTE IGUAL */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-slate-800 tracking-tight">
@@ -173,15 +181,6 @@ export default function Dashboard() {
                 Ver Relatório Completo
               </button>
             </Link>
-          </div>
-
-          <div className="bg-orange-50 p-6 rounded-[2rem] border border-orange-100 relative overflow-hidden">
-            <div className="relative z-10">
-              <p className="text-orange-600 font-black text-[10px] uppercase tracking-widest mb-2">Próxima Medalha</p>
-              <h4 className="text-orange-900 font-bold">Fera da Teoria</h4>
-              <p className="text-orange-700/70 text-xs mt-1">Sincronizado na nuvem ☁️</p>
-            </div>
-            <span className="absolute -right-2 -bottom-2 text-6xl opacity-20">🏅</span>
           </div>
         </div>
       </div>
