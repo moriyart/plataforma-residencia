@@ -2,24 +2,32 @@
 
 import { useState, useEffect } from "react";
 import { loadTasks } from "@/lib/store";
+import { useUser } from "@clerk/nextjs"; // <--- 1. Importar o Clerk
 import Link from "next/link";
 
 export default function Dashboard() {
+  const { user, isLoaded } = useUser(); // <--- 2. Ativar o usuário
   const [tarefas, setTarefas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
-      const dados = await loadTasks();
-      setTarefas(dados);
-      setLoading(false);
-      setMounted(true);
+      // 3. Só buscar se o Clerk carregou e existe um usuário
+      if (isLoaded && user) {
+        const dados = await loadTasks(user.id); // <--- Passar o ID aqui
+        setTarefas(dados);
+        setLoading(false);
+        setMounted(true);
+      } else if (isLoaded && !user) {
+        setLoading(false);
+        setMounted(true);
+      }
     }
     fetchData();
-  }, []);
+  }, [user, isLoaded]);
 
-  if (!mounted || loading) {
+  if (!mounted || loading || !isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500"></div>
@@ -27,8 +35,18 @@ export default function Dashboard() {
     );
   }
 
+  // Se o usuário não estiver logado
+  if (!user) {
+    return (
+      <div className="text-center p-10">
+        <p className="text-slate-600">Por favor, faça login para ver seus dados.</p>
+      </div>
+    );
+  }
+
   // --- LÓGICA DE DATAS E PROGRESSO ---
-  const hoje = new Date().toISOString().split('T')[0];
+  // Ajuste para pegar a data local correta
+  const hoje = new Date().toLocaleDateString('en-CA'); // Formato YYYY-MM-DD estável
   
   const tarefasHoje = tarefas.filter(t => t.data === hoje);
   const concluidasHoje = tarefasHoje.filter(t => t.concluida).length;
@@ -53,7 +71,9 @@ export default function Dashboard() {
     <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-0">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-800 tracking-tight">Olá! 👋</h1>
+          <h1 className="text-4xl font-black text-slate-800 tracking-tight">
+            Olá, {user.firstName || "Estudante"}! 👋
+          </h1>
           <p className="text-slate-500 font-medium">
             {porcentagemHoje === 100 ? "Você completou tudo por hoje!" : "Vamos focar nos estudos hoje?"}
           </p>
