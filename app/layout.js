@@ -1,7 +1,7 @@
 import "./globals.css";
 import Sidebar from "./Sidebar";
 import { Inter } from "next/font/google";
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs';
+import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 const inter = Inter({ subsets: ["latin"] });
 
