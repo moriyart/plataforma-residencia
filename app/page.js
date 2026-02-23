@@ -6,14 +6,26 @@ import Link from "next/link";
 
 export default function Dashboard() {
   const [tarefas, setTarefas] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setTarefas(loadTasks());
-    setMounted(true);
+    async function fetchData() {
+      const dados = await loadTasks();
+      setTarefas(dados);
+      setLoading(false);
+      setMounted(true);
+    }
+    fetchData();
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted || loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500"></div>
+      </div>
+    );
+  }
 
   // --- LÓGICA DE DATAS E PROGRESSO ---
   const hoje = new Date().toISOString().split('T')[0];
@@ -33,18 +45,17 @@ export default function Dashboard() {
   const circGeral = 2 * Math.PI * raioGeral;
   const offsetGeral = circGeral - (porcentagemGeral / 100) * circGeral;
 
-  const raioHoje = 18; // Raio menor para o topo
+  const raioHoje = 18;
   const circHoje = 2 * Math.PI * raioHoje;
   const offsetHoje = circHoje - (porcentagemHoje / 100) * circHoje;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* 1. SAUDAÇÃO E STATUS COM CÍRCULO ANIMADO NO TOPO */}
+    <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-0">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-slate-800 tracking-tight">Olá! 👋</h1>
           <p className="text-slate-500 font-medium">
-            {porcentagemHoje === 100 ? "Você completou tudo por hoje! Incrível." : "Vamos focar nos estudos hoje?"}
+            {porcentagemHoje === 100 ? "Você completou tudo por hoje!" : "Vamos focar nos estudos hoje?"}
           </p>
         </div>
         
@@ -54,7 +65,6 @@ export default function Dashboard() {
             <p className="text-lg font-bold text-violet-600">{porcentagemHoje}%</p>
           </div>
           
-          {/* Círculo do Topo Animado */}
           <div className="relative w-12 h-12 flex items-center justify-center">
             <svg className="absolute w-full h-full transform -rotate-90">
               <circle cx="24" cy="24" r={raioHoje} stroke="#f1f5f9" strokeWidth="4" fill="transparent" />
@@ -79,7 +89,7 @@ export default function Dashboard() {
                 <span className="bg-violet-400/30 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Focar Agora</span>
                 <h2 className="text-3xl font-bold mt-4 mb-2">{proximaTarefa.titulo}</h2>
                 <p className="text-violet-100 mb-6 font-medium uppercase text-xs tracking-wider">
-                  Prioridade {proximaTarefa.prioridade || 'Média'} • {proximaTarefa.tipo}
+                  Prioridade {proximaTarefa.prioridade} • {proximaTarefa.tipo}
                 </p>
                 <Link href="/cronograma" className="bg-white text-violet-600 px-8 py-3 rounded-xl font-bold hover:bg-violet-50 transition-all inline-block">
                   Ir para Cronograma
@@ -90,9 +100,7 @@ export default function Dashboard() {
           )}
 
           <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              📅 Planejado para hoje
-            </h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">📅 Planejado para hoje</h3>
             <div className="space-y-4">
               {tarefasHoje.length === 0 ? (
                 <p className="text-slate-400 py-4 italic text-sm">Nenhuma tarefa agendada para hoje.</p>
@@ -132,7 +140,7 @@ export default function Dashboard() {
             </div>
             <div className="space-y-3">
                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500 font-medium">Total de tarefas</span>
+                  <span className="text-slate-500 font-medium">Total</span>
                   <span className="font-bold text-slate-700">{totalGeral}</span>
                </div>
                <div className="flex justify-between text-sm">
@@ -151,7 +159,7 @@ export default function Dashboard() {
             <div className="relative z-10">
               <p className="text-orange-600 font-black text-[10px] uppercase tracking-widest mb-2">Próxima Medalha</p>
               <h4 className="text-orange-900 font-bold">Fera da Teoria</h4>
-              <p className="text-orange-700/70 text-xs mt-1">Conclua mais tarefas para ganhar!</p>
+              <p className="text-orange-700/70 text-xs mt-1">Sincronizado na nuvem ☁️</p>
             </div>
             <span className="absolute -right-2 -bottom-2 text-6xl opacity-20">🏅</span>
           </div>

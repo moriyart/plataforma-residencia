@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { loadTasks, saveTasks } from "@/lib/store";
+import { loadTasks, saveTask, updateTaskStatus, deleteTask } from "@/lib/store";
 
 export default function Cronograma() {
   const [tarefas, setTarefas] = useState([]);
@@ -10,40 +10,43 @@ export default function Cronograma() {
   const [tipo, setTipo] = useState("teoria");
   const [prioridade, setPrioridade] = useState("media");
   const [filtroAtivo, setFiltroAtivo] = useState("todos");
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // 1. CARREGAR TAREFAS DO BANCO DE DADOS
   useEffect(() => {
-    setMounted(true);
-    setTarefas(loadTasks());
+    async function fetchData() {
+      const dados = await loadTasks();
+      setTarefas(dados);
+      setLoading(false);
+    }
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    if (mounted) saveTasks(tarefas);
-  }, [tarefas, mounted]);
-
-  if (!mounted) return null;
-
-  function adicionarTarefa() {
+  // 2. ADICIONAR NO BANCO DE DADOS
+  async function adicionarTarefa() {
     if (!titulo || !data) return;
-    const nova = { 
-      id: Date.now(), 
-      titulo, 
-      data, 
-      tipo, 
-      prioridade, 
-      concluida: false 
-    };
-    setTarefas(prev => [...prev, nova].sort((a, b) => new Date(a.data) - new Date(b.data)));
+    const nova = { titulo, data, tipo, prioridade, concluida: false };
+    
+    await saveTask(nova); // Salva na nuvem
+    const dadosAtualizados = await loadTasks(); // Recarrega a lista atualizada
+    setTarefas(dadosAtualizados);
+    
     setTitulo("");
     setData("");
   }
 
-  function toggleTarefa(id) {
-    setTarefas(tarefas.map(t => t.id === id ? { ...t, concluida: !t.concluida } : t));
+  // 3. ATUALIZAR STATUS NO BANCO
+  async function toggleTarefa(id, statusAtual) {
+    await updateTaskStatus(id, !statusAtual);
+    setTarefas(tarefas.map(t => t.id === id ? { ...t, concluida: !statusAtual } : t));
   }
 
-  function excluirTarefa(id) {
-    if (confirm("Apagar esta tarefa?")) setTarefas(tarefas.filter(t => t.id !== id));
+  // 4. EXCLUIR NO BANCO
+  async function excluirTarefa(id) {
+    if (confirm("Apagar esta tarefa?")) {
+      await deleteTask(id);
+      setTarefas(tarefas.filter(t => t.id !== id));
+    }
   }
 
   const tarefasFiltradas = tarefas.filter(t => {
@@ -51,11 +54,13 @@ export default function Cronograma() {
     return t.tipo === filtroAtivo;
   });
 
+  if (loading) return <div className="p-20 text-center font-bold text-slate-400">Carregando seu cronograma...</div>;
+
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
       <header className="mb-10">
         <h1 className="text-4xl font-black text-slate-800 tracking-tight">Cronograma</h1>
-        <p className="text-slate-500 font-medium">Sua jornada de estudos organizada.</p>
+        <p className="text-slate-500 font-medium">Sincronizado na nuvem</p>
       </header>
 
       {/* FORMULÁRIO */}
@@ -110,7 +115,6 @@ export default function Cronograma() {
         ) : (
           tarefasFiltradas.map((t) => (
             <div key={t.id} className="relative group">
-              {/* Bolinha da Prioridade */}
               <div className={`absolute -left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white shadow-sm 
                 ${t.prioridade === 'alta' ? 'bg-red-500' : t.prioridade === 'baixa' ? 'bg-blue-400' : 'bg-yellow-400'}`}>
               </div>
@@ -118,7 +122,7 @@ export default function Cronograma() {
               <div className={`flex items-center justify-between bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-md transition-all ${t.concluida ? 'opacity-60' : ''}`}>
                 <div className="flex items-center gap-6">
                   <button 
-                    onClick={() => toggleTarefa(t.id)}
+                    onClick={() => toggleTarefa(t.id, t.concluida)}
                     className={`w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all ${
                       t.concluida ? "bg-green-500 border-green-500" : "bg-white border-slate-200"
                     }`}
