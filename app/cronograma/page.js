@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { loadTasks, saveTask, updateTaskStatus, deleteTask } from "@/lib/store";
+import { useUser } from "@clerk/nextjs"; // <--- ADICIONADO
 
 export default function Cronograma() {
+  const { user, isLoaded } = useUser(); // <--- ADICIONADO
   const [tarefas, setTarefas] = useState([]);
   const [titulo, setTitulo] = useState("");
   const [data, setData] = useState("");
@@ -15,20 +17,24 @@ export default function Cronograma() {
   // 1. CARREGAR TAREFAS DO BANCO DE DADOS
   useEffect(() => {
     async function fetchData() {
-      const dados = await loadTasks();
-      setTarefas(dados);
-      setLoading(false);
+      if (isLoaded && user) {
+        const dados = await loadTasks(user.id); // <--- PASSANDO O ID
+        setTarefas(dados);
+        setLoading(false);
+      } else if (isLoaded && !user) {
+        setLoading(false);
+      }
     }
     fetchData();
-  }, []);
+  }, [user, isLoaded]);
 
   // 2. ADICIONAR NO BANCO DE DADOS
   async function adicionarTarefa() {
-    if (!titulo || !data) return;
+    if (!titulo || !data || !user) return;
     const nova = { titulo, data, tipo, prioridade, concluida: false };
     
-    await saveTask(nova); // Salva na nuvem
-    const dadosAtualizados = await loadTasks(); // Recarrega a lista atualizada
+    await saveTask(nova, user.id); // <--- PASSANDO O ID
+    const dadosAtualizados = await loadTasks(user.id); // <--- PASSANDO O ID
     setTarefas(dadosAtualizados);
     
     setTitulo("");
@@ -37,14 +43,16 @@ export default function Cronograma() {
 
   // 3. ATUALIZAR STATUS NO BANCO
   async function toggleTarefa(id, statusAtual) {
-    await updateTaskStatus(id, !statusAtual);
+    if (!user) return;
+    await updateTaskStatus(id, !statusAtual, user.id); // <--- PASSANDO O ID
     setTarefas(tarefas.map(t => t.id === id ? { ...t, concluida: !statusAtual } : t));
   }
 
   // 4. EXCLUIR NO BANCO
   async function excluirTarefa(id) {
+    if (!user) return;
     if (confirm("Apagar esta tarefa?")) {
-      await deleteTask(id);
+      await deleteTask(id, user.id); // <--- PASSANDO O ID
       setTarefas(tarefas.filter(t => t.id !== id));
     }
   }
@@ -54,13 +62,15 @@ export default function Cronograma() {
     return t.tipo === filtroAtivo;
   });
 
-  if (loading) return <div className="p-20 text-center font-bold text-slate-400">Carregando seu cronograma...</div>;
+  // Proteção: Enquanto o Clerk carrega ou se não houver usuário
+  if (!isLoaded || loading) return <div className="p-20 text-center font-bold text-slate-400">Carregando seu cronograma...</div>;
+  if (!user) return <div className="p-20 text-center font-bold text-slate-400">Por favor, faça login para acessar.</div>;
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
       <header className="mb-10">
         <h1 className="text-4xl font-black text-slate-800 tracking-tight">Cronograma</h1>
-        <p className="text-slate-500 font-medium">Sincronizado na nuvem</p>
+        <p className="text-slate-500 font-medium italic">Olá, {user.firstName}! Seus dados estão sincronizados ☁️</p>
       </header>
 
       {/* FORMULÁRIO */}
@@ -139,7 +149,7 @@ export default function Cronograma() {
                         {t.tipo}
                       </span>
                       <span className="text-[10px] font-bold text-slate-400 uppercase">
-                        📅 {new Date(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                        📅 {new Date(t.data + "T00:00:00").toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                       </span>
                     </div>
                   </div>
