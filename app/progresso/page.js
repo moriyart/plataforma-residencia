@@ -2,27 +2,36 @@
 
 import { useState, useEffect } from "react";
 import { loadTasks } from "@/lib/store";
-import { useUser } from "@clerk/nextjs"; // Importamos o hook do Clerk
+import { useUser, useSession } from "@clerk/nextjs"; // <--- 1. Importar useSession
 
 export default function Progresso() {
-  const { user, isLoaded } = useUser(); // Pegamos o usuário logado
+  const { user, isLoaded } = useUser();
+  const { session } = useSession(); // <--- 2. Ativar a sessão
   const [tarefas, setTarefas] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
-      // Só buscamos os dados se o Clerk já carregou o usuário
-      if (isLoaded && user) {
-        const dados = await loadTasks(user.id); // Passamos o ID para a store
-        setTarefas(dados);
-        setLoading(false);
+      // 3. Verificamos se tudo carregou: Clerk + Usuário + Sessão
+      if (isLoaded && user && session) {
+        try {
+          // 4. Buscamos o Token JWT do Supabase
+          const token = await session.getToken({ template: "supabase" });
+          
+          // 5. Passamos o ID e o Token para a store
+          const dados = await loadTasks(user.id, token);
+          setTarefas(dados);
+        } catch (error) {
+          console.error("Erro ao carregar dados de progresso:", error);
+        } finally {
+          setLoading(false);
+        }
       } else if (isLoaded && !user) {
-        // Se carregou e não tem usuário, paramos o loading
         setLoading(false);
       }
     }
     fetchData();
-  }, [user, isLoaded]);
+  }, [user, isLoaded, session]); // <--- Adicionado session aqui
 
   if (loading || !isLoaded) {
     return (
@@ -32,7 +41,6 @@ export default function Progresso() {
     );
   }
 
-  // Se o usuário não estiver logado por algum motivo, mostramos um aviso
   if (!user) {
     return (
       <div className="text-center p-10">
@@ -41,7 +49,7 @@ export default function Progresso() {
     );
   }
 
-  // Cálculos de Estatísticas (Agora filtrados pelo seu ID)
+  // --- LÓGICA DE CÁLCULOS (Permanecem iguais, mas agora com dados reais) ---
   const total = tarefas.length;
   const concluidas = tarefas.filter((t) => t.concluida).length;
   const progressoTotal = total > 0 ? Math.round((concluidas / total) * 100) : 0;
@@ -52,7 +60,6 @@ export default function Progresso() {
   const exercicio = tarefas.filter((t) => t.tipo === "exercicio").length;
   const exercicioConcluido = tarefas.filter((t) => t.tipo === "exercicio" && t.concluida).length;
 
-  // Configurações do Gráfico Circular
   const raio = 36;
   const circunferencia = 2 * Math.PI * raio;
   const offset = circunferencia - (progressoTotal / 100) * circunferencia;
@@ -62,7 +69,7 @@ export default function Progresso() {
       <header className="mb-10 text-center md:text-left">
         <h1 className="text-4xl font-black text-slate-800 tracking-tight">Seu Progresso</h1>
         <p className="text-slate-500 font-medium italic">
-          Olá, {user.firstName || "Estudante"}! Seus dados estão seguros ☁️
+          Olá, {user.firstName || "Estudante"}! Seus dados estão protegidos 🔒
         </p>
       </header>
 
@@ -78,28 +85,14 @@ export default function Progresso() {
           <p className="text-4xl font-black text-green-500">{concluidas}</p>
         </div>
 
-        {/* CARD COM GRÁFICO CIRCULAR */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center text-center">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Progresso Geral</p>
           
           <div className="relative flex items-center justify-center">
             <svg className="w-24 h-24 transform -rotate-90">
+              <circle cx="48" cy="48" r={raio} stroke="#f1f5f9" strokeWidth="8" fill="transparent" />
               <circle
-                cx="48"
-                cy="48"
-                r={raio}
-                stroke="currentColor"
-                strokeWidth="8"
-                fill="transparent"
-                className="text-slate-100"
-              />
-              <circle
-                cx="48"
-                cy="48"
-                r={raio}
-                stroke="currentColor"
-                strokeWidth="8"
-                fill="transparent"
+                cx="48" cy="48" r={raio} stroke="currentColor" strokeWidth="8" fill="transparent"
                 strokeDasharray={circunferencia}
                 strokeDashoffset={offset}
                 strokeLinecap="round"
@@ -143,7 +136,7 @@ export default function Progresso() {
       <div className="mt-12 bg-slate-800 p-10 rounded-[3rem] text-center text-white relative overflow-hidden">
         <div className="relative z-10">
           <h2 className="text-2xl font-bold mb-2">Continue firme! 🚀</h2>
-          <p className="text-slate-400">Cada clique no seu progresso é um passo rumo à vaga.</p>
+          <p className="text-slate-400">Cada tarefa concluída é uma vitória no seu banco de dados pessoal.</p>
         </div>
         <div className="absolute -left-10 -bottom-10 text-9xl opacity-5">🏆</div>
       </div>
